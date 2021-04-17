@@ -104,7 +104,7 @@ contract Dependencies {
 
     function doSomethingElse() public {
         // We require the end contract here, look it up as-needed
-        require(EndAbstract(chainlog.getAddress("MCD_VOW")).live() == 0, "Dependencies/system-shutdown");
+        require(EndAbstract(chainlog.getAddress("MCD_END")).live() == 0, "Dependencies/system-shutdown");
         
         // Do something that depends on the system being live
     }
