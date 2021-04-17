@@ -1,4 +1,3 @@
-all    :; dapp build
+all    :; dapp --use solc:0.6.12 build
 clean  :; dapp clean
-test   :; dapp test
-deploy :; dapp create MipsBestPractices
+test   :; dapp --use solc:0.6.12 test -v
