@@ -52,9 +52,9 @@ Integration tests should be run on a mainnet fork against the live code. Hevm pr
 
 The Maker core contracts will specify each of their dependencies in the constructor. This is okay for the core contracts, but it is not scalable for MIPs. We recommend you use the [chainlog](https://github.com/makerdao/dss-chain-log) as the source of truth to pull in any dependencies your MIP may have. The chainlog exists at the following addresses:
 
-Mainnet: [0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F](https://etherscan.io/address/0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F)
-Kovan: [0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F](https://kovan.etherscan.io/address/0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F)
+Mainnet: [0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F](https://etherscan.io/address/0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F)  
+Kovan: [0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F](https://kovan.etherscan.io/address/0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F)  
 
-We recommend you deploy your MIP with the chainlog accepted in the constructor and pull in all further dependencies via the chainlog.
+For quick access to a list of live contracts on both Kovan and Mainnet you can visit the [releases page](https://changelog.makerdao.com/).
 
-See [Dependencies.sol](https://github.com/BellwoodStudios/mips-best-practices) for examples of dependency management.
+See [Dependencies.sol](https://github.com/BellwoodStudios/mips-best-practices/blob/master/src/Dependencies.sol) for examples of dependency management.
