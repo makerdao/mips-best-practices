@@ -118,4 +118,24 @@ You may ask which are the "permanent contracts". In general you should every con
  * dai
  * daiJoin
 
-We recommend looking up mcd core contracts as-needed to ensure that when they are upgraded nothing needs to be done to keep your MIP running smoothly. If you absolutely need to cache contracts locally we recommend providing a way for these addresses to be permissionlessly refreshed.
+We recommend looking up mcd core contracts as-needed to ensure that when they are upgraded nothing needs to be done to keep your MIP running smoothly. If you absolutely need to cache contracts locally we recommend providing a way for these addresses to be permissionlessly refreshed called `rdeps()`.
+
+### Rounding
+
+Due to limited precision, sometimes we need to round a result. In the case you are building a collateral adapter or something that interacts with a user you always want to round "against" the user. This ensures that the collateral adapter will always have enough collateral to pay out previous depositors. You can see an example of this in the [CropJoin adapter](https://github.com/hexonaut/crop/blob/main/src/crop.sol#L127) where `rmulup()` is used to round "against" the user and require them to get at most what they are owed and no more.
+
+### Bad Debt
+
+New collateral adapters need ways to liquidate themselves when the collateralization ratio drops below the critical threshold. With a normal ERC20 we can just use the standard liquidation mechanism. In cases where the standard collateralization cannot be used, careful attention needs to be paid to how long this process is likely to take. For example in [MIP21](https://github.com/makerdao/MIP21-RWA-Example/blob/master/src/RwaLiquidationOracle.sol#L122) `cull()` is used to enforce bad debt invocation after a deadline elapses. Simiarly in [MIP50: Direct Deposit Module](https://github.com/BellwoodStudios/dss-direct-deposit/blob/master/src/DssDirectDepositAaveDai.sol#L303) `cull()` will force the debt into the `vow` for potential debt auctions to recapitalize the system. As a general rule of thumb, there should always be a timer to which debt is forced to be written off as uncollectable. Further it should not require governance intervention to write-off this bad debt. Governance may be unwilling to trigger debt auctions which risks system stability.
+
+### System Shutdown
+
+One of the primary gaurantees that ensures Dai's stability is the shutdown module which allows Dai holders to redeem their Dai for the underlying collateral. It is important that MIP creators take this into account when designing their MIPs. It is one of the most overlooked pieces, but it is very important for system stability. While there are no exact rules on how to deal with this, we can provide some general rules of thumb that can get you started.
+
+#### Access to Collateral
+
+In order to comply with system shutdown, anyone should be ideally be able to redeem `vat.gems` for the underlying collateral. It is because of this constraint you see things like [AuthGemJoin](https://github.com/makerdao/dss-gem-joins/blob/master/src/join-auth.sol#L70) not requiring `auth` on the `exit()` function. This is intentionally omitted in order to allow anyone to pull the collateral out even though an authorized party was the one that put it in.
+
+#### Graceful Shutdown
+
+If you are able to gracefully close out your module then we recommend you do so. An example of this is in [MIP50: Direct Deposit Module](https://github.com/BellwoodStudios/dss-direct-deposit/blob/master/src/DssDirectDepositAaveDai.sol#L287). You can see the permissionless `cage()` function which can be executed when `vat.live() == 0`. Upon execution, the system will begin gracefully closing itself out.
