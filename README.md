@@ -221,7 +221,7 @@ contract Dependencies {
 }
 ```
 
-You may ask which are the "permanent contracts". In general you should every contract is *not* permanent and will be replaced at some point. There are 3 exceptions to this rule:
+You may ask which are the "permanent contracts". In general you should assume every contract is **not** permanent and will be replaced at some point. There are 3 exceptions to this rule:
 
  * vat
  * dai
