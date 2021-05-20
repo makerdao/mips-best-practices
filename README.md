@@ -19,7 +19,7 @@ There are lots of tools to choose from in Ethereum ecosystem, and although it is
 
 ### Terminology
 
-Maker is organized into (a core set of contracts)[https://github.com/makerdao/dss] as well as an ever-growing ecosystem of "edge contracts" which we call MIPs. For the purposes of this document we will be ignoring core contract development. The most common type of MIP is the addition of a new collateral type. Not every colleteral addition requires an associated MIP - most ERC20 tokens can just use the standard gem joins. A MIP is required if you are introducing new functionality. Here are some examples of collateral additions that require custom logic:
+Maker is organized into (a core set of contracts)[https://github.com/makerdao/dss] as well as an ever-growing ecosystem of "edge contracts". For the purposes of this document we will be ignoring core contract development. The most common type of MIP is the addition of a new collateral type. Not every colleteral addition requires an associated MIP - most ERC20 tokens can just use the standard gem joins. A MIP is required if you are introducing new functionality. Here are some examples of collateral additions that require custom logic:
 
  * [MIP21: Real World Assets - Off-Chain Asset Backed Lender](https://mips.makerdao.com/mips/details/60626de7e65b747f996b3d43)
  * [MIP22: Centrifuge Direct Liquidation Module](https://mips.makerdao.com/mips/details/60626de7e65b747f996b3d44)
@@ -50,7 +50,7 @@ Integration tests should be run on a mainnet fork against the live code. Hevm pr
 
 ### Flat Code
 
-The Maker team recommends flat code. Inheritance can be nice for code-reusability, but it comes at the cost of readability if used too much. Having to jump between multiple files with `virtual` methods can make things trickier to audit.
+The Maker team recommends flat code. Inheritance can be nice for code-reusability, but it comes at the cost of readability if used too much. Having to jump between multiple files with `virtual` methods can make code harder to audit. In general "less is more" - we are looking for succinct code that does exactly what it needs to and nothing more.
 
 ### Variable Naming
 
@@ -58,7 +58,7 @@ Maker recommends using abstract variable names where ever possible. You can see 
 
 ### Upgradability
 
-Maker has a strict policy of no upgradable contracts. This is in contrast to the wider eco-system which uses things like Transparent Proxies frequently. This is not to say that Maker disallows upgrading code, but it must be done through redeployment as opposed to updating the interface on a fixed address.
+Upgradable contracts are generally discouraged except in cases where there is an extermely strong justification for their use. This is in contrast to the wider eco-system which uses things like Transparent Proxies frequently. This is not to say that Maker disallows upgrading code, but it should be done through redeployment as opposed to updating the interface on a fixed address.
 
 ### Arbitrary Contract Calls
 
