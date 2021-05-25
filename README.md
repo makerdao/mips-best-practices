@@ -39,8 +39,7 @@ All contracts should target Solidity `0.6.12` specifically. We periodically bump
 
 ### Libraries
 
-To keep things simple we recommend you only install the [dss-interfaces](https://github.com/makerdao/dss-interfaces) library when interfacing with the core contracts. This reduces any issues with versioning, code changes, etc. You can add this to your project via `dapp install makerdao/dss-interfaces`. If you absolutely need to pull in the [core contracts](https://github.com/makerdao/dss) library for say setting up a test environment then feel free to do so.
-
+We recommend you build MIPs with no external dependencies. If you really need to pull in some libraries for testing that is fine, but we recommend you keep this to a minimum.
 
 ### Testing
 
@@ -73,6 +72,9 @@ Below are some common patterns you can copy + paste into your project:
 Common auth modifier used to give administrative access to the contract:
 
 ```
+event Rely(address indexed usr);
+event Deny(address indexed usr);
+
 // --- Auth ---
 function rely(address guy) external auth { wards[guy] = 1; emit Rely(guy); }
 function deny(address guy) external auth { wards[guy] = 0; emit Deny(guy); }
@@ -97,6 +99,9 @@ constructor(...) public {
 Administrative parameters change:
 
 ```
+event File(bytes32 indexed what, uint256 data);
+event File(bytes32 indexed what, address data);
+
 // --- Administration ---
 function file(bytes32 what, uint256 data) external auth {
     if (what == "param") param = data;
@@ -166,54 +171,109 @@ Kovan: [0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F](https://kovan.etherscan.io/a
 
 For quick access to a list of live contracts on both Kovan and Mainnet you can visit the [releases page](https://changelog.makerdao.com/).
 
-See [Dependencies.sol](https://github.com/BellwoodStudios/mips-best-practices/blob/master/src/Dependencies.sol) for examples of dependency management.
+To keep things simple we recommend you define interfaces inside the same file as the contract that is using them. The standard pattern is to define them as `FooLike`. Where `Foo` is the name of the contract dependency. You can see examples of this below.
+
+See [FullExample.sol](https://github.com/makerdao/mips-best-practices/blob/master/src/FullExample.sol).
 
 ```
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2021 Dai Foundation
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 pragma solidity 0.6.12;
 
-import "dss-interfaces/dss/ChainlogAbstract.sol";
-import "dss-interfaces/dss/DaiAbstract.sol";
-import "dss-interfaces/dss/DaiJoinAbstract.sol";
-import "dss-interfaces/dss/EndAbstract.sol";
+// Define interface dependencies in-line instead of importing them
+// Use the FooLike {} syntax specific to just what functions you are using
 
-contract Dependencies {
+interface ChainlogLike {
+    function getAddress(bytes32) external view returns (address);
+}
 
-    // Use the immutable keyword on permanent contracts to save gas
-    ChainlogAbstract immutable public chainlog;
+interface DaiLike {
+    function approve(address, uint256) external returns (bool);
+}
 
-    // Dai / DaiJoin can be set as immutable because they are "permanent contracts"
-    DaiAbstract immutable public dai;
-    DaiJoinAbstract immutable public daiJoin;
+interface DaiJoinLike {
+    function join(address, uint256) external;
+}
 
-    // We need to cache the vow because it is on a hot path
-    address public vow;
+interface EndLike {
+    function live() external returns (uint256);
+}
 
-    constructor(ChainlogAbstract _chainlog) public {
-        chainlog = _chainlog;
-        dai = DaiAbstract(_chainlog.getAddress("MCD_DAI"));
-        daiJoin = DaiJoinAbstract(_chainlog.getAddress("MCD_JOIN_DAI"));
+contract FullExample {
 
-        vow = _chainlog.getAddress("MCD_VOW");
+    // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event File(bytes32 indexed what, address data);
+
+    // --- Auth ---
+    function rely(address guy) external auth { wards[guy] = 1; emit Rely(guy); }
+    function deny(address guy) external auth { wards[guy] = 0; emit Deny(guy); }
+    mapping (address => uint256) public wards;
+    modifier auth {
+        require(wards[msg.sender] == 1, "MODULE/not-authorized");
+        _;
     }
 
-    // Permissionless refresh to cached contracts
-    function rdeps() public {
-        vow = chainlog.getAddress("MCD_VOW");
+    // Use the immutable keyword on permanent contracts to save gas
+    ChainlogLike immutable public chainlog;
+
+    // Dai / DaiJoin can be set as immutable because they are "permanent contracts"
+    DaiLike immutable public dai;
+    DaiJoinLike immutable public daiJoin;
+
+    // The end is not a "permanent contract" so we need to allow it to be updated
+    EndLike public end;
+
+    constructor(ChainlogLike _chainlog) public {
+        wards[msg.sender] = 1;
+        emit Rely(msg.sender);
+        
+        chainlog = _chainlog;
+        dai = DaiLike(_chainlog.getAddress("MCD_DAI"));
+        daiJoin = DaiJoinLike(_chainlog.getAddress("MCD_JOIN_DAI"));
+        end = EndLike(_chainlog.getAddress("MCD_END"));
+    }
+
+    // --- Administration ---
+    function file(bytes32 what, address data) external auth {
+        // The end has specific interface, so we need to have governance forcefully update the end
+        // when a new end is deployed
+        if (what == "end") end = EndLike(data);
+        else revert("MODULE/file-unrecognized-param");
+        emit File(what, data);
     }
 
     function doSomething() public {
         // ... My MIP Custom Logic ...
 
-        // I need to send revenue into the vow
-        // We normally recommend performing this lookup as-needed instead of caching the address locally, but
-        // in this case we need every bit of gas savings we can get
+        // I need to send revenue into the vow.
+        // Since there is no interface dependency, I want to load the vow
+        // on the fly so I can always get the most recent version.
+        // 
+        // Please note there is need to worry about vow updates as the argument
+        // is a generic address and no specific interface is required
         dai.approve(address(daiJoin), 123 ether);
-        daiJoin.join(vow, 123 ether);
+        daiJoin.join(chainlog.getAddress("MCD_VOW"), 123 ether);
     }
 
     function doSomethingElse() public {
-        // We require the end contract here, look it up as-needed
-        require(EndAbstract(chainlog.getAddress("MCD_END")).live() == 0, "Dependencies/system-shutdown");
+        // We require the end contract here with a specific function call
+        require(end.live() == 0, "MODULE/system-shutdown");
         
         // Do something that depends on the system being live
     }
@@ -227,7 +287,7 @@ You may ask which are the "permanent contracts". In general you should assume ev
  * dai
  * daiJoin
 
-We recommend looking up mcd core contracts as-needed to ensure that when they are upgraded nothing needs to be done to keep your MIP running smoothly. If you absolutely need to cache contracts locally we recommend providing a way for these addresses to be permissionlessly refreshed called `rdeps()`.
+For the remaining core contract dependencies we recommend you set them in the constructor and use the `file(XXX, YYY)` pattern to allow governance to update them at a later time. There is one notable exception with the `vow`. A very common operation is to either send profit to the surplus buffer (`vow`) or suck dai from it. Both of these operations use the `vat` with a generic address, so we recommend you load the `vow` from the changelog right as you need it as in the example above.
 
 ### Rounding
 
@@ -239,7 +299,7 @@ Maker core contracts use a lot of high precision numbers which are called RADs (
 
 ### Bad Debt
 
-New collateral adapters need ways to liquidate themselves when the collateralization ratio drops below the critical threshold. With a normal ERC20 we can just use the standard liquidation mechanism. In cases where the standard collateralization cannot be used, careful attention needs to be paid to how long this process is likely to take. For example in [MIP21](https://github.com/makerdao/MIP21-RWA-Example/blob/master/src/RwaLiquidationOracle.sol#L122) `cull()` is used to enforce bad debt invocation after a deadline elapses. Simiarly in [MIP50: Direct Deposit Module](https://github.com/BellwoodStudios/dss-direct-deposit/blob/master/src/DssDirectDepositAaveDai.sol#L303) `cull()` will force the debt into the `vow` for potential debt auctions to recapitalize the system. As a general rule of thumb, there should always be a timer to which debt is forced to be written off as uncollectable. Further it should not require governance intervention to write-off this bad debt. Governance may be unwilling to trigger debt auctions which risks system stability.
+New collateral adapters need ways to liquidate themselves when the collateralization ratio drops below the critical threshold. With a normal ERC20 we can just use the standard liquidation mechanism. In cases where the standard collateralization cannot be used, careful attention needs to be paid to how long this process is likely to take. For example in [MIP21](https://github.com/makerdao/MIP21-RWA-Example/blob/master/src/RwaLiquidationOracle.sol#L122) `cull()` is used to enforce bad debt invocation after a deadline elapses. Simiarly in [MIP50: Direct Deposit Module](https://github.com/makerdao/dss-direct-deposit/blob/master/src/DssDirectDepositAaveDai.sol#L303) `cull()` will force the debt into the `vow` for potential debt auctions to recapitalize the system. As a general rule of thumb, there should always be a timer to which debt is forced to be written off as uncollectable. Further it should not require governance intervention to write-off this bad debt. Governance may be unwilling to trigger debt auctions which risks system stability.
 
 ### System Shutdown
 
@@ -251,4 +311,4 @@ In order to comply with system shutdown, anyone should be ideally be able to red
 
 #### Graceful Shutdown
 
-If you are able to gracefully close out your module then we recommend you do so. An example of this is in [MIP50: Direct Deposit Module](https://github.com/BellwoodStudios/dss-direct-deposit/blob/master/src/DssDirectDepositAaveDai.sol#L287). You can see the permissionless `cage()` function which can be executed when `vat.live() == 0`. Upon execution, the system will begin gracefully closing itself out.
+If you are able to gracefully close out your module then we recommend you do so. An example of this is in [MIP50: Direct Deposit Module](https://github.com/makerdao/dss-direct-deposit/blob/master/src/DssDirectDepositAaveDai.sol#L287). You can see the permissionless `cage()` function which can be executed when `vat.live() == 0`. Upon execution, the system will begin gracefully closing itself out.
