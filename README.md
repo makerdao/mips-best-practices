@@ -8,7 +8,7 @@ Before starting your next great MIP you should be aware of how the Maker protoco
 
 ## Getting Started
 
-There are lots of tools to choose from in Ethereum ecosystem, and although it is not completely manditory to use the Maker toolset we highly recommend that you do. Similar to the rest of this guide, you can choose to stray from this best practices document, but you must have a very good reason for doing so.
+There are lots of tools to choose from in Ethereum ecosystem, and although it is not completely mandatory to use the Maker toolset we highly recommend that you do. Similar to the rest of this guide, you can choose to stray from this best practices document, but you must have a very good reason for doing so.
 
 ### Maker Developer Ecosystem
 
@@ -19,7 +19,7 @@ There are lots of tools to choose from in Ethereum ecosystem, and although it is
 
 ### Terminology
 
-Maker is organized into (a core set of contracts)[https://github.com/makerdao/dss] as well as an ever-growing ecosystem of "edge contracts". For the purposes of this document we will be ignoring core contract development. The most common type of MIP is the addition of a new collateral type. Not every colleteral addition requires an associated MIP - most ERC20 tokens can just use the standard gem joins. A MIP is required if you are introducing new functionality. Here are some examples of collateral additions that require custom logic:
+Maker is organized into [a core set of contracts](https://github.com/makerdao/dss) as well as an ever-growing ecosystem of "edge contracts". For the purposes of this document we will be ignoring core contract development. The most common type of MIP is the addition of a new collateral type. Not every colleteral addition requires an associated MIP - most ERC20 tokens can just use the standard gem joins. A MIP is required if you are introducing new functionality. Here are some examples of collateral additions that require custom logic:
 
  * [MIP21: Real World Assets - Off-Chain Asset Backed Lender](https://mips.makerdao.com/mips/details/60626de7e65b747f996b3d43)
  * [MIP22: Centrifuge Direct Liquidation Module](https://mips.makerdao.com/mips/details/60626de7e65b747f996b3d44)
@@ -61,7 +61,7 @@ Upgradable contracts are generally discouraged except in cases where there is an
 
 ### Arbitrary Contract Calls
 
-Do not make external calls to unknown code unless absolutely necessary. Arbitrary code execution is an anti-pattern, and we try to stay away from it as much as possible. This is things such as the new `transferAndCall()` extention to ERC20. These methods may provide conveniance, but re-entrancy is a notoriously hard thing to reason about. Notable exceptions are if the external call is necessary for the module's core functionality. For example, Flash Loans / Mints require calling external code such as in the [clipper](https://github.com/makerdao/dss/blob/master/src/clip.sol#L395) and [MIP25](https://github.com/hexonaut/dss-flash/blob/master/src/flash.sol#L128). If this has to be done we recommend put re-entrancy guards on the calling function.
+Do not make external calls to unknown code unless absolutely necessary. Arbitrary code execution is an anti-pattern, and we try to stay away from it as much as possible. This is things such as the new `transferAndCall()` extention to ERC20. These methods may provide conveniance, but re-entrancy is a notoriously hard thing to reason about. Notable exceptions are if the external call is necessary for the module's core functionality. For example, Flash Loans / Mints require calling external code such as in the [clipper](https://github.com/makerdao/dss/blob/master/src/clip.sol#L395) and [MIP25](https://github.com/hexonaut/dss-flash/blob/master/src/flash.sol#L128). If this has to be done we recommend put re-entrancy guards on all the contract functions that provoke storage changes.
 
 ### Common Code Patterns
 
@@ -76,8 +76,8 @@ event Rely(address indexed usr);
 event Deny(address indexed usr);
 
 // --- Auth ---
-function rely(address guy) external auth { wards[guy] = 1; emit Rely(guy); }
-function deny(address guy) external auth { wards[guy] = 0; emit Deny(guy); }
+function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
+function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 mapping (address => uint256) public wards;
 modifier auth {
     require(wards[msg.sender] == 1, "MODULE/not-authorized");
@@ -101,10 +101,12 @@ Administrative parameters change:
 ```
 event File(bytes32 indexed what, uint256 data);
 event File(bytes32 indexed what, address data);
+event File(bytes32 indexed ilk, bytes32 indexed what, uint256 data);
+event File(bytes32 indexed ilk, bytes32 indexed what, address data);
 
 // --- Administration ---
 function file(bytes32 what, uint256 data) external auth {
-    if (what == "param") param = data;
+    if (what == "value") value = data;
     else revert("MODULE/file-unrecognized-param");
     emit File(what, data);
 }
@@ -112,6 +114,16 @@ function file(bytes32 what, address data) external auth {
     if (what == "addr") addr = data;
     else revert("MODULE/file-unrecognized-param");
     emit File(what, data);
+}
+function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
+    if (what == "value") ilks[ilk].value = data;
+    else revert("MODULE/file-unrecognized-param");
+    emit File(ilk, what, data);
+}
+function file(bytes32 ilk, bytes32 what, address data) external auth {
+    if (what == "addr") ilks[ilk].addr = data;
+    else revert("MODULE/file-unrecognized-param");
+    emit File(ilk, what, data);
 }
 ```
 
@@ -221,8 +233,8 @@ contract FullExample {
     event File(bytes32 indexed what, address data);
 
     // --- Auth ---
-    function rely(address guy) external auth { wards[guy] = 1; emit Rely(guy); }
-    function deny(address guy) external auth { wards[guy] = 0; emit Deny(guy); }
+    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
+    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
     mapping (address => uint256) public wards;
     modifier auth {
         require(wards[msg.sender] == 1, "MODULE/not-authorized");
