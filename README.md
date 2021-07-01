@@ -324,3 +324,13 @@ In order to comply with system shutdown, anyone should be ideally be able to red
 #### Graceful Shutdown
 
 If you are able to gracefully close out your module then we recommend you do so. An example of this is in [MIP50: Direct Deposit Module](https://github.com/makerdao/dss-direct-deposit/blob/master/src/DssDirectDepositAaveDai.sol#L287). You can see the permissionless `cage()` function which can be executed when `vat.live() == 0`. Upon execution, the system will begin gracefully closing itself out.
+
+### Gas Saving Tips
+
+Below are some random tips for saving gas that we have collected along the way:
+
+#### Use full-width types
+
+Intuitively you may think that by using two `uint128`s in storage right next to each other you are saving gas. This is not necessarily the case and in fact this pattern may slightly increase gas usage. Unless you are using both variables in the same transaction you may be wasting gas on bitwise operations.
+
+It's somewhat common to have a flag variable to indicate if a contract is in some state. It is intuitive to use `bool` to define this varaible, but in fact it is usually more gas efficient to use `uint256` like in [this case](https://github.com/makerdao/dss/blob/master/src/vat.sol#L65) in the `vat`.
