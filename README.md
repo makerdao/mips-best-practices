@@ -33,6 +33,10 @@ Of course new collateral additions are not the only thing that can be added to t
  * [MIP25: Flash Mint Module](https://mips.makerdao.com/mips/details/60626de7e65b747f996b3d47)
  * [MIP34: Keg Streaming Payments Module](https://mips.makerdao.com/mips/details/60626de7e65b747f996b3d53)
 
+### Design and Specification
+
+The intent of all new modules needs to be clearly specified in natural language and/or mathematics--code alone is not considered sufficient. Err on the side of being too detailed--vague or non-existent specifications have led to bugs in the past. Make an effort to identify high-level properties (e.g. "users cannot withdraw more than their stake" or "the sum of all balances should equal the total supply"). These should later be used to create property-based tests.
+
 ### Versioning
 
 All contracts should target Solidity `0.6.12` specifically. We periodically bump this version number up so be sure to check back here when starting a new MIP. Use the exact version syntax `pragma solidity 0.6.12;` at the top of your files.
@@ -43,7 +47,7 @@ We recommend you build MIPs with no external dependencies. If you really need to
 
 ### Testing
 
-We recommend MIP authors add exhaustive testing to accompany their code. The Maker Smart Contract Core Unit(s) will expect a large amount of both unit and integration tests. These tests should cover every facet of the code. Bonus points for fuzz and symbolic tests.
+We recommend MIP authors add exhaustive testing to accompany their code. The Maker Smart Contract Core Unit(s) will expect a large amount of both unit and integration tests. These tests should cover every facet of the code. Bonus points for fuzz and symbolic tests. In particular, an effort should be made to test high-level properties and complete user experience flows, not just the behavior of individual functions (although the latter is still necessary).
 
 Integration tests should be run on a mainnet fork against the live code. Hevm provides this functionality via the `--rpc` argument.
 
