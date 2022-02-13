@@ -150,7 +150,7 @@ function mul(uint256 x, uint256 y) public pure returns (uint256 z) {
     require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
 }
 function divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
-    z = add(x, sub(y, 1)) / y;
+    z = x != 0 ? ((x - 1) / y) + 1 : 0;
 }
 function wmul(uint256 x, uint256 y) public pure returns (uint256 z) {
     z = mul(x, y) / WAD;
